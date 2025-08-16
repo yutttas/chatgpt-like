@@ -168,28 +168,49 @@ export default function Page() {
 
     if (error) {
       console.error("rename error:", error);
+      alert(`タイトルの更新に失敗しました：${error.message}`);
       return;
     }
     setSessions((prev) => prev.map((x) => (x.id === s.id ? { ...x, title } : x)));
   };
 
+  // ★FIX: メッセージ→セッションの順に削除し、失敗時は理由を表示
   const deleteSession = async (s: SessionRow) => {
     if (!confirm("このチャットを削除しますか？")) return;
 
-    const { error } = await supabase
-      .from("sessions")
-      .delete()
-      .eq("id", s.id)
-      .eq("user_id", userId); // ★ 自分のものだけ
+    try {
+      // 1) まず関連メッセージを削除（外部キー制約/残存対策）
+      const { error: msgErr } = await supabase
+        .from("messages")
+        .delete()
+        .eq("session_id", s.id);
+      if (msgErr) {
+        console.error("delete messages error:", msgErr);
+        alert(`メッセージの削除に失敗しました：${msgErr.message}`);
+        return;
+      }
 
-    if (error) {
-      console.error("delete error:", error);
-      return;
-    }
-    setSessions((prev) => prev.filter((x) => x.id !== s.id));
-    if (selectedSessionId === s.id) {
-      setSelectedSessionId(null);
-      setMessages([]);
+      // 2) 次にセッションを削除（自分のものだけ）
+      const { error: sesErr } = await supabase
+        .from("sessions")
+        .delete()
+        .eq("id", s.id)
+        .eq("user_id", userId);
+      if (sesErr) {
+        console.error("delete session error:", sesErr);
+        alert(`チャットの削除に失敗しました：${sesErr.message}`);
+        return;
+      }
+
+      // 3) UI 更新
+      setSessions((prev) => prev.filter((x) => x.id !== s.id));
+      if (selectedSessionId === s.id) {
+        setSelectedSessionId(null);
+        setMessages([]);
+      }
+    } catch (e: any) {
+      console.error("delete fatal:", e);
+      alert(`削除処理でエラーが発生しました：${e?.message || String(e)}`);
     }
   };
 
@@ -235,7 +256,7 @@ export default function Page() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // ★ body.model を route.ts が優先採用
+        // ★ body.model を route.ts 側で使う場合に備えて同梱
         body: JSON.stringify({ messages: history, model: modelId }),
       });
 
@@ -320,19 +341,19 @@ export default function Page() {
               <button
                 onClick={() => setSidebarOpen(false)}
                 aria-label="サイドバーを閉じる"
-                className="ml-3 rounded-md p-2 text-white/80 hover:bg-white/10"
+                className="ml-3 rounded-md p-2 text-white/80 hover:bg白/10"
                 title="サイドバーを閉じる"
               >
                 ☰
               </button>
             </div>
-
             <button
               onClick={handleLogout}
-              className="self-start rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+              className="self-start rounded-md bg-red-600 px-3 py-1.5 text-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/40"
             >
               ログアウト
             </button>
+
 
             {/* 新規作成 */}
             <div className="mt-1 flex gap-2">
@@ -402,7 +423,7 @@ export default function Page() {
                           deleteSession(s);
                           setMenuOpenId(null);
                         }}
-                        className="block w-full px-3 py-2 text-left text-red-300 hover:bg-white/10"
+                        className="block w-full px-3 py-2 text-left text-red-300 hover:bg白/10"
                       >
                         削除
                       </button>
