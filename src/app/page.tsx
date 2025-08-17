@@ -1,6 +1,13 @@
+// src/app/page.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type {
+  ChangeEvent,
+  KeyboardEvent,
+  MouseEvent,
+  FormEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -85,7 +92,7 @@ export default function Page() {
   }, [router]);
 
   // --- Fetch sessions (only mine) ---
-  const fetchSessions = async (uid = userId) => {
+  const fetchSessions = async (uid: string = userId) => {
     if (!uid) return;
     const { data, error } = await supabase
       .from("sessions")
@@ -208,9 +215,11 @@ export default function Page() {
         setSelectedSessionId(null);
         setMessages([]);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : (typeof e === "string" ? e : String(e));
       console.error("delete fatal:", e);
-      alert(`削除処理でエラーが発生しました：${e?.message || String(e)}`);
+      alert(`削除処理でエラーが発生しました：${message}`);
     }
   };
 
@@ -304,6 +313,28 @@ export default function Page() {
     router.push("/auth");
   };
 
+  // ------- Handlers with explicit types (implicit any 回避) -------
+  const handleNewTitleChange = (e: ChangeEvent<HTMLInputElement>) =>
+    setNewTitle(e.target.value);
+  const handleMenuButtonClick = (e: MouseEvent<HTMLButtonElement>, id: string) => {
+    e.stopPropagation();
+    setMenuOpenId((v) => (v === id ? null : id));
+  };
+  const handleModelChange = (e: ChangeEvent<HTMLSelectElement>) =>
+    setModel(e.target.value as ShimaModel);
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) =>
+    setInput(e.target.value);
+  const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
+      e.preventDefault();
+      void handleSend();
+    }
+  };
+  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    void handleSend();
+  };
+
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
@@ -354,12 +385,11 @@ export default function Page() {
               ログアウト
             </button>
 
-
             {/* 新規作成 */}
             <div className="mt-1 flex gap-2">
               <input
                 value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
+                onChange={handleNewTitleChange}
                 placeholder="新しいチャットタイトル"
                 className="w-full rounded-md border border-white/10 bg-[#0b1220] px-3 py-2 text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
@@ -393,10 +423,7 @@ export default function Page() {
                   {/* 3点メニュー */}
                   <div className="absolute right-2 top-1/2 -translate-y-1/2">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpenId((v) => (v === s.id ? null : s.id));
-                      }}
+                      onClick={(e) => handleMenuButtonClick(e, s.id)}
                       className="rounded-md px-2 py-1 text-white/70 hover:bg-white/10"
                       aria-label="メニュー"
                     >
@@ -445,7 +472,7 @@ export default function Page() {
           </h1>
           <select
             value={model}
-            onChange={(e) => setModel(e.target.value as ShimaModel)}
+            onChange={handleModelChange}
             className="rounded-md border border-white/10 bg-[#0b1220] px-2 py-1.5 text-sm hover:bg-white/5 focus:outline-none"
             title="モデル切替"
           >
@@ -490,24 +517,19 @@ export default function Page() {
         {/* 入力欄 */}
         {selectedSessionId && (
           <div className="border-t border-white/10 bg-[#0f172a]/70 p-4">
-            <div className="flex items-end gap-2">
+            <form className="flex items-end gap-2" onSubmit={handleFormSubmit}>
               <textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 onCompositionStart={() => setIsComposing(true)}
                 onCompositionEnd={() => setIsComposing(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && !isComposing) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
+                onKeyDown={handleTextareaKeyDown}
                 rows={2}
                 placeholder="メッセージを入力…（Shift+Enterで改行）"
                 className="min-h-[44px] flex-1 resize-none rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
               <button
-                onClick={handleSend}
+                type="submit"
                 disabled={isLoading}
                 className={`shrink-0 rounded-lg px-4 py-2 text-sm ${
                   isLoading
@@ -517,7 +539,7 @@ export default function Page() {
               >
                 送信
               </button>
-            </div>
+            </form>
           </div>
         )}
       </main>
