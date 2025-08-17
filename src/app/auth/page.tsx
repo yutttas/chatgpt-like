@@ -1,3 +1,4 @@
+// src/app/auth/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -17,7 +18,7 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const handleLogin = async (): Promise<void> => {
     setBusy(true);
     setErrorMsg(null);
     try {
@@ -28,18 +29,19 @@ export default function AuthPage() {
       });
       if (error) throw error;
       router.replace("/");
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "ログインに失敗しました");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrorMsg(msg || "ログインに失敗しました");
     } finally {
       setBusy(false);
     }
   };
 
-  const handleSignup = async () => {
+  const handleSignup = async (): Promise<void> => {
     setBusy(true);
     setErrorMsg(null);
     try {
-      if (password.length < 4) {
+      if (password.length < 6) { // 表示と整合
         setErrorMsg("パスワードは6文字以上にしてください");
         setBusy(false);
         return;
@@ -63,19 +65,19 @@ export default function AuthPage() {
         return;
       }
 
-      // 3) メール確認ONの環境でも、そのままパスワードでログインを試みる（ダッシュボードでOFFなら即成功）
+      // 3) メール確認ONの環境でも、そのままパスワードでログインを試みる
       const { error: loginErr } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (loginErr) {
-        // 本当にメール確認が必要な設定だとここで止まる
         setErrorMsg("登録完了。メール確認が必要な設定です。確認後にログインしてください。");
         return;
       }
       router.replace("/");
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "登録に失敗しました");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrorMsg(msg || "登録に失敗しました");
     } finally {
       setBusy(false);
     }

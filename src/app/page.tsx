@@ -2,12 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type {
-  ChangeEvent,
-  KeyboardEvent,
-  MouseEvent,
-  FormEvent,
-} from "react";
+import type { ChangeEvent, KeyboardEvent, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -265,7 +260,6 @@ export default function Page() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // ★ body.model を route.ts 側で使う場合に備えて同梱
         body: JSON.stringify({ messages: history, model: modelId }),
       });
 
@@ -329,10 +323,6 @@ export default function Page() {
       e.preventDefault();
       void handleSend();
     }
-  };
-  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    void handleSend();
   };
 
   if (authLoading) {
@@ -472,7 +462,7 @@ export default function Page() {
           </h1>
           <select
             value={model}
-            onChange={handleModelChange}
+            onChange={(e) => setModel(e.target.value as ShimaModel)}
             className="rounded-md border border-white/10 bg-[#0b1220] px-2 py-1.5 text-sm hover:bg-white/5 focus:outline-none"
             title="モデル切替"
           >
@@ -517,7 +507,7 @@ export default function Page() {
         {/* 入力欄 */}
         {selectedSessionId && (
           <div className="border-t border-white/10 bg-[#0f172a]/70 p-4">
-            <form className="flex items-end gap-2" onSubmit={handleFormSubmit}>
+            <div className="flex items-end gap-2">
               <textarea
                 value={input}
                 onChange={handleInputChange}
@@ -529,7 +519,7 @@ export default function Page() {
                 className="min-h-[44px] flex-1 resize-none rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
               <button
-                type="submit"
+                onClick={() => void handleSend()}
                 disabled={isLoading}
                 className={`shrink-0 rounded-lg px-4 py-2 text-sm ${
                   isLoading
@@ -539,7 +529,7 @@ export default function Page() {
               >
                 送信
               </button>
-            </form>
+            </div>
           </div>
         )}
       </main>
