@@ -7,15 +7,15 @@ import { supabase } from "@/lib/supabaseClient";
 
 function toEmail(idOrEmail: string) {
   const v = idOrEmail.trim();
-  return v.includes("@") ? v : `${v}@example.com`; // ← ここでメールに正規化
+  return v.includes("@") ? v : `${v}@example.com`; // IDだけならメールに正規化
 }
 
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [idOrEmail, setIdOrEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [idOrEmail, setIdOrEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [busy, setBusy] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleLogin = async (): Promise<void> => {
@@ -23,10 +23,7 @@ export default function AuthPage() {
     setErrorMsg(null);
     try {
       const email = toEmail(idOrEmail);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       router.replace("/");
     } catch (e: unknown) {
@@ -41,7 +38,7 @@ export default function AuthPage() {
     setBusy(true);
     setErrorMsg(null);
     try {
-      if (password.length < 6) { // 表示と整合
+      if (password.length < 6) {
         setErrorMsg("パスワードは6文字以上にしてください");
         setBusy(false);
         return;
@@ -52,24 +49,18 @@ export default function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          // 任意: ユーザー名をメタデータに保存しておく
-          data: { username: idOrEmail.trim() },
-        },
+        options: { data: { username: idOrEmail.trim() } }, // 任意のメタデータ
       });
       if (error) throw error;
 
-      // 2) メール確認OFFなら session が返るので、そのままログイン完了
+      // 2) メール確認OFFなら session が返る
       if (data.session) {
         router.replace("/");
         return;
       }
 
-      // 3) メール確認ONの環境でも、そのままパスワードでログインを試みる
-      const { error: loginErr } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // 3) メール確認ONでも一旦ログインを試す（OFF環境ならそのまま成功）
+      const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
       if (loginErr) {
         setErrorMsg("登録完了。メール確認が必要な設定です。確認後にログインしてください。");
         return;
@@ -108,7 +99,7 @@ export default function AuthPage() {
         <label className="block text-sm mb-1 text-gray-300">ID または メール</label>
         <input
           value={idOrEmail}
-          onChange={(e) => setIdOrEmail(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIdOrEmail(e.target.value)}
           placeholder="例) taro@gmail.com"
           className="w-full mb-4 px-3 py-2 rounded bg-gray-900 border border-gray-700 outline-none focus:ring-2 focus:ring-blue-600"
         />
@@ -117,7 +108,7 @@ export default function AuthPage() {
         <input
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
           placeholder="••••••"
           className="w-full mb-4 px-3 py-2 rounded bg-gray-900 border border-gray-700 outline-none focus:ring-2 focus:ring-blue-600"
         />

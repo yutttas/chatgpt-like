@@ -1,8 +1,11 @@
+// src/lib/supabaseClient.ts
+"use client";
 import { createClient } from "@supabase/supabase-js";
 
-// 環境変数からURLとKeyを取得
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Supabaseクライアント作成
+if (!supabaseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is missing");
+if (!supabaseAnonKey) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is missing");
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
